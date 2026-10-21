@@ -22,6 +22,8 @@ test("the public API schema contains the v2 entry points and object methods", ()
     "TaskSpace.newPage",
     "TaskSpace.finish",
     "Page.snapshot",
+    "Page.saveSnapshot",
+    "searchSnapshot",
     "Page.reload",
     "Page.targetId",
     "Page.waitForEvent",
@@ -146,5 +148,27 @@ test("schema-driven option validation rejects unknown and invalid fields", () =>
   assert.throws(
     () => validatePublicApiOptions("TaskSpace.finish", { keep: ["p2", "p2"] }),
     /keep must be "all" or an array of unique non-empty Page labels/,
+  );
+});
+
+test("local snapshot APIs validate their public options", () => {
+  validatePublicApiOptions("Page.saveSnapshot", {
+    path: "/tmp/new.txt",
+    scope: "subtree",
+    root: "@21",
+  });
+  validatePublicApiOptions("searchSnapshot", {
+    maxMatches: 3,
+    maxChars: 1000,
+    contextLines: 0,
+    caseSensitive: true,
+  });
+  assert.throws(
+    () => validatePublicApiOptions("Page.saveSnapshot", { diff: true }),
+    /unknown option/,
+  );
+  assert.throws(
+    () => validatePublicApiOptions("searchSnapshot", { contextLines: -1 }),
+    /non-negative/,
   );
 });

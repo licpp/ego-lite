@@ -96,3 +96,61 @@ export function snapshotDiffResumeCase() {
     } finally { await page.close(); }
   `;
 }
+
+export function localSnapshotPrepareCase() {
+  return String.raw`
+    const task = await taskSpace(taskName);
+    const page = await newPageAt(task, baseUrl + '/nav-target');
+    try {
+      await page.evaluate(() => {
+        document.body.innerHTML = '<button id="act">算法申请 云南</button><output></output><main></main>';
+        document.querySelector('#act').onclick = () => document.querySelector('output').textContent = 'Verified action';
+        for (let i = 0; i < 150; i++) {
+          const p = document.createElement('p');
+          p.textContent = '岗位 ' + i + ' 四川 算法 ' + '详情 '.repeat(10);
+          document.querySelector('main').append(p);
+        }
+      });
+      const path = join(tempDir, 'local-snapshot.txt');
+      const saved = await page.saveSnapshot({ path, scope: 'full_page' });
+      assertEqual(saved.path, path, 'save returns the absolute file path');
+      assertEqual(saved.scope, 'full_page', 'save records scope');
+      assertEqual(saved.url, baseUrl + '/nav-target', 'save records source URL');
+      assert(!JSON.stringify(saved).includes('详情'), 'save returns metadata without page body');
+      const raw = await readFile(path, 'utf8');
+      assertIncludes(raw, '岗位 149', 'full snapshot captures offscreen loaded text');
+      assert(saved.bytes > 5000, 'fixture produces a long snapshot');
+      await assertRejects(() => page.saveSnapshot({ path }), 'EEXIST', 'existing snapshot is never overwritten');
+      assertEqual(await readFile(path, 'utf8'), raw, 'failed overwrite leaves original snapshot intact');
+      const result = await searchSnapshot(path, ['四川', '云南'], { maxMatches: 3, contextLines: 0, maxChars: 1000 });
+      assertEqual(result.totalMatches, 151, 'search counts all matching lines');
+      assertEqual(result.returnedMatches, 3, 'search limits selected matches');
+      assert(result.truncated, 'search reports omitted results');
+      assert(result.text.length <= 1000, 'search obeys a total snippet character budget');
+      const refreshed = await page.snapshot({ maxChars: 1000 });
+      assertIncludes(refreshed, '云南', 'current snapshot can refresh saved refs');
+      const actionLine = refreshed.split('\n').find((line) => /^\s*button.*\[ref=/.test(line));
+      const actionRef = actionLine && actionLine.match(/\[ref=(\d+)/);
+      assert(actionRef, 'fresh observation publishes a current action ref');
+      await page.click('@' + actionRef[1]);
+      assertEqual(await page.evaluate(() => document.querySelector('output').textContent), 'Verified action', 'current page remains actionable');
+      await writeFile(join(tempDir, 'local-snapshot-meta.json'), JSON.stringify(saved));
+    } finally { await page.close(); }
+  `;
+}
+
+export function localSnapshotResumeCase() {
+  return String.raw`
+    const saved = JSON.parse(await readFile(join(tempDir, 'local-snapshot-meta.json'), 'utf8'));
+    const result = await searchSnapshot(saved.path, '岗位 149', { contextLines: 0, maxChars: 300 });
+    assertEqual(result.totalMatches, 1, 'saved snapshot is searchable in a new CLI round after Page close');
+    assertIncludes(result.text, '岗位 149', 'local search returns a targeted snippet');
+    assertEqual(result.source.page, saved.page, 'source Page label is retained');
+    assertEqual(result.source.capturedAt, saved.capturedAt, 'capture time is retained');
+    const physical = (await readFile(saved.path, 'utf8')).split('\n');
+    assertIncludes(physical[result.matchLines[0] - 1], '岗位 149', 'line numbers match physical rg lines');
+    assertIncludes(result.notice, 'not live', 'search states saved content is not live');
+    assertEqual((await searchSnapshot(saved.path, 'no such job')).totalMatches, 0, 'no-match search is concise');
+    await (await import("node:fs/promises")).rm(saved.path);
+  `;
+}

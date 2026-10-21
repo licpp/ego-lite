@@ -6427,3 +6427,64 @@ test("diff snapshots persist across rounds, reset on scope/navigation, and never
     assert.match(await restored.snapshot({ diff: true }), /full: new/);
   });
 });
+
+test("saveSnapshot writes full current refs but returns metadata, and rejects invalid options before capture", async () => {
+  await withFixture(async (fixture) => {
+    let captures = 0;
+    const task = taskForRound(fixture, "round-a", {
+      async snapshot(options) {
+        captures++;
+        assert.equal("path" in options, false);
+        return {
+          content: 'root\n  button "AI 云南" [ref=21]',
+          refs: [{ refId: 21, backendNodeId: 21, role: "button" }],
+        };
+      },
+    });
+    const page = await openTestPage(task, "https://example.test/jobs");
+    const saved = await page.saveSnapshot({
+      path: join(fixture.rootDir, "snapshot.txt"),
+      scope: "full_page",
+    });
+    assert.equal(saved.url, "https://example.test/jobs");
+    assert.equal(saved.scope, "full_page");
+    assert.equal(saved.page, page.label);
+    assert.equal("text" in saved, false);
+    assert.match(await readFile(saved.path, "utf8"), /AI 云南/);
+    await page.click("@21");
+    const before = captures;
+    await assert.rejects(
+      () => page.saveSnapshot({ path: "relative.txt" }),
+      /absolute/,
+    );
+    await assert.rejects(
+      () => page.saveSnapshot({ diff: true }),
+      /unknown option/,
+    );
+    await assert.rejects(
+      () => page.saveSnapshot({ maxChars: 6000 }),
+      /unknown option/,
+    );
+    assert.equal(captures, before);
+  });
+});
+
+test("saveSnapshot respects the Page control boundary before writing any file", async () => {
+  await withFixture(async (fixture) => {
+    const task = taskForRound(fixture, "round-a");
+    const page = await openTestPage(task, "https://example.test/jobs");
+    const denied = taskForRound(fixture, "round-b", {
+      gate: {
+        async withPage() {
+          throw new Error("user control hard stop");
+        },
+      },
+    });
+    const path = join(fixture.rootDir, "blocked.txt");
+    await assert.rejects(
+      () => denied.page(page.label).saveSnapshot({ path }),
+      /user control hard stop/,
+    );
+    await assert.rejects(() => readFile(path), { code: "ENOENT" });
+  });
+});

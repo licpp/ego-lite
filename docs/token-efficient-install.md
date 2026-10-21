@@ -29,7 +29,7 @@ ego-browser nodejs -e 'await guide()'
 ego-browser nodejs -e 'await guide("scripts")'
 ```
 
-The guide should report `2.1.0-token-efficient.2`, and `guide()` should list four
+The guide should report `2.1.0-token-efficient.3`, and `guide()` should list four
 topics. If another agent keeps its own copy of the entry Skill, point that agent
 to this checkout's `skills/ego-browser/SKILL.md` (do not stack duplicate Skills).
 The core guide is read once per conversation/version, not once per round.
@@ -81,7 +81,7 @@ including `ego-browser/references/` and `agent-skills/`. On Windows use an absol
 
 ## What changes
 
-- The default guide is about 6 KB instead of 23 KB. Conditional details remain
+- The default guide is about 6.3 KB instead of 23 KB. Conditional details remain
   available through `guide("scripts" | "spaces" | "pages" | "files")`.
 - `page.snapshot({ maxChars: 6000 })` limits returned body text at whole-line
   boundaries with an explicit omission notice. The provenance header and ref
@@ -95,7 +95,7 @@ including `ego-browser/references/` and `agent-skills/`. On Windows use an absol
   completion cleanup remain enforced. No persistent daemon or automatic retry
   of submissions is introduced.
 
-The roughly 74% reduction is in default guide bytes, not a measured 76% saving in total
+The roughly 73% reduction is in default guide bytes, not a measured saving in total
 task tokens. Actual savings depend on which topics and Page content a task needs.
 
 ## Bounded, viewport and incremental observations
@@ -132,3 +132,44 @@ output and ask for narrower scope. Closing/releasing a Page or finishing the tas
 removes its baseline. These options reduce text returned to the model; they do not
 reduce the browser's native snapshot capture work. “Viewport” means the visible
 area of the selected Page, not every tab in the operating-system window.
+
+## Save long pages locally and search on demand
+
+```js
+const saved = await page.saveSnapshot({ scope: "full_page" });
+console.log(saved); // metadata only, never the full page text
+console.log(
+  await searchSnapshot(saved.path, ["算法", "云南", "四川"], {
+    maxMatches: 10,
+    contextLines: 2,
+    maxChars: 4000,
+  }),
+);
+```
+
+In the next CLI round, call `searchSnapshot` with that absolute path. No browser
+connection or Page handle is required by the search. Captures retain URL, time,
+Page/space, scope, and current semantic text/refs. Very long source URLs are capped at 2048 characters with `urlTruncated`.
+They are grep-friendly UTF-8
+files with metadata on line 1; search results use physical line numbers matching
+`rg -n`. Queries are literal terms (OR), case-insensitive by default.
+
+Search returns exact total matching-line count, selected match line numbers,
+source metadata, snippets and `truncated`. Defaults are 20 matches, two context
+lines, and 6000 total snippet characters. Hard limits are 100 matches, 10 context
+lines, 100000 snippet characters; metadata/JSON overhead is additional. Adjacent
+context ranges merge; extra matches beyond the match limit are not exposed as
+context. Unusually long lines are clipped around a match and marked truncated.
+
+`saveSnapshot` defaults to viewport; use `full_page` for loaded offscreen content
+or `subtree` with a root ref. It does not auto-scroll or load additional pages.
+It uses the same control checks and ref registration as `snapshot`, saves a
+complete observation, and clears any incremental baseline. Existing destinations
+are never overwritten. Omit `path` for a private temporary directory or supply
+an absolute new path in an existing directory. Files are mode 0600, at most
+32 MiB, checksum-verified during search, and remain until explicitly removed,
+including after Page/task cleanup. Browser data and login state are unaffected.
+
+Saved data is not live: observe the current Page before acting on saved refs.
+Refresh the file after pagination/scroll-loading or when current content matters.
+For detailed options use `await guide("files")` or `help("searchSnapshot")`.

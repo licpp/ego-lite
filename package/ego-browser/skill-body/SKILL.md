@@ -1,5 +1,5 @@
 ---
-version: "2.1.0-token-efficient.2"
+version: "2.1.0-token-efficient.3"
 date: "2026-10-21"
 ---
 
@@ -47,7 +47,7 @@ Do not read every topic upfront:
 | `await guide("scripts")` | Windows quoting, reusable task modules, script-file execution or syntax errors |
 | `await guide("spaces")`  | Tab adoption, popups, handoff, user takeover or completion                     |
 | `await guide("pages")`   | Unfamiliar selectors, screenshots, keyboard/mouse, page JavaScript or CDP      |
-| `await guide("files")`   | Uploads, downloads, file choosers, JavaScript dialogs or browser requests      |
+| `await guide("files")`   | Snapshot search, uploads, downloads, choosers, dialogs or browser requests     |
 
 The API is a small custom surface, not Playwright. Use only documented Page /
 TaskSpace methods. `page.evaluate(fn, argument)` runs in the Page: it cannot
@@ -72,6 +72,9 @@ Before clearing any cookies/cache/storage read `references/clearing-state.md`.
   Scrolling can make lines no longer observed without deleting DOM nodes.
   Truncation does not advance the baseline; narrow scope or increase the budget.
   Omit `diff` or use `false` to clear it and request a complete observation.
+- For long pages, `await page.saveSnapshot({ scope: "full_page" })` returns a
+  file summary, not page text. Use `searchSnapshot(path, query, opts)` or bounded
+  `rg`; see `guide("files")`. Re-observe before acting on saved refs.
 - For lists, use `page.evaluate()` to return selected fields and a bounded slice,
   e.g. matching job titles/locations plus total count; do not print a hundred
   full descriptions. Do not pair a snapshot and screenshot by default.

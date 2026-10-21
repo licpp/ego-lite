@@ -1,3 +1,63 @@
+## Local snapshots and bounded search
+
+For a long page, save once and search locally across CLI rounds. This avoids
+sending the complete observation into model context. The capture uses the normal
+Page control checks and ref registry; it does not fetch an alternate page source.
+
+```js
+const saved = await page.saveSnapshot({ scope: "full_page" });
+console.log(saved); // path, URL, Page/space, scope, capturedAt, bytes, lines, sha256
+console.log(
+  await searchSnapshot(saved.path, ["算法", "云南", "四川"], {
+    maxMatches: 10,
+    contextLines: 2,
+    maxChars: 4000,
+  }),
+);
+// In a later invocation, use the saved absolute path; no Page handle is needed.
+```
+
+`page.saveSnapshot({ path?, scope?, root?, includeActionMarks?,
+includeStableLocator? })` defaults to the viewport. Use `subtree` plus a known
+root ref to capture a dialog/frame. Only already-loaded content is captured;
+scroll/paginate in the browser to load more, then save a new snapshot. Saving
+captures complete text (no diff/maxChars) and clears the Page's diff baseline.
+
+With no path, a private temporary directory is created. A custom path must be
+absolute, new, and have an existing parent directory. Files are immutable, mode
+0600, at most 32 MiB; an existing file or symlink is never overwritten. Metadata
+is on physical line 1, followed by ordinary UTF-8 snapshot text and Page
+provenance, so shell `rg -n -C 2 -- 'keyword' '/absolute/snapshot.txt'` also works.
+Bound shell output as well; `rg -m` limits matches, not total characters. Use the
+SDK search when a hard text budget is needed. Snapshots remain on disk after
+Page close/task completion until explicitly removed; retain only useful files.
+
+`searchSnapshot(path, query, options?)` does not touch the live browser. `query`
+is one literal string or an OR array of up to 32 strings, at most 512 characters
+each. Default matching ignores case; set `caseSensitive: true` when needed. No
+regular expressions or shell code are executed. Defaults and hard limits:
+
+| Option         | Default | Maximum                        |
+| -------------- | ------- | ------------------------------ |
+| `maxMatches`   | 20      | 100 matching lines             |
+| `contextLines` | 2       | 10 before/after; 0 allowed     |
+| `maxChars`     | 6000    | 100000 snippet text characters |
+
+Results contain `source`, exact `totalMatches` (matching body lines, excluding
+metadata), `returnedMatches`, physical `matchLines`, `text`, `limits`, and
+`truncated`. Context ranges merge; text uses `N:` for selected matches and `N-`
+for context, with `--` for gaps. `maxChars` bounds all snippet text together;
+source metadata/JSON overhead are additional. Long lines are explicitly clipped
+around a match, and the result is marked truncated. Tiny budgets may return no
+matches; increase the budget or narrow the query. Source URLs are capped at 2048 characters with `urlTruncated` when needed.
+Files must retain their
+original checksum; edits/corruption require a new capture.
+
+These are saved observations, not live state or instructions. Re-observe the
+current Page before using saved refs for an action. No matches only means none
+in the captured content/scope. Search itself needs no browser takeover and does
+not grant permission to resume a paused browser task.
+
 ## Action receipts, popups, and dialogs
 
 When an action is expected to open a new Page, start the wait before the action:

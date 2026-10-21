@@ -63,6 +63,31 @@ export const PUBLIC_API_SCHEMA: readonly PublicApiEntry[] = [
       "Print one SDK-matched usage reference: scripts, spaces, pages, or files. Omit topic to list choices. Prints itself; do not console.log the return value.",
   },
   {
+    name: "searchSnapshot",
+    signature:
+      "await searchSnapshot(path, query, { maxMatches?, contextLines?, maxChars?, caseSensitive? })",
+    summary:
+      "Search a local saved snapshot without observing the browser. query is a literal string or an array of OR terms (up to 32, 512 characters each); no regex/shell execution. Returns source metadata, physical file line numbers, exact total matching-line count, bounded text, and truncation status. Saved refs require a fresh observation before acting.",
+    options: {
+      maxMatches: option(
+        "positiveInteger",
+        "Maximum matching lines to select, default 20; at most 100.",
+      ),
+      contextLines: option(
+        "nonNegativeNumber",
+        "Context lines before/after matches, default 2; integer 0–10. Overlapping ranges merge.",
+      ),
+      maxChars: option(
+        "positiveInteger",
+        "Total returned snippet text character budget, default 6000; at most 100000. Metadata is additional. Long lines may be clipped explicitly.",
+      ),
+      caseSensitive: option(
+        "boolean",
+        "Literal case-sensitive matching; default false.",
+      ),
+    },
+  },
+  {
     name: "profiles",
     signature: "await profiles()",
     summary: "List browser profiles available for new task spaces.",
@@ -263,6 +288,30 @@ export const PUBLIC_API_SCHEMA: readonly PublicApiEntry[] = [
         "positiveInteger",
         "Optional returned body character budget (for example 6000). Preserves complete lines and the Page header; marks omissions explicitly. Omit for the complete snapshot. Does not limit native snapshot capture or invalidate omitted refs.",
       ),
+    },
+  },
+  {
+    name: "Page.saveSnapshot",
+    signature:
+      "await page.saveSnapshot({ path?, scope?, root?, includeActionMarks?, includeStableLocator? })",
+    summary:
+      "Capture the current Page to an immutable local UTF-8 text file, returning only path/source/time/size/line count/checksum. Defaults to viewport; full_page includes offscreen captured content. Files retain Page provenance and current refs and can be searched across CLI rounds with searchSnapshot() or rg. No diff/truncation is saved. Existing destinations are never overwritten. Files persist until explicitly removed.",
+    options: {
+      path: option(
+        "nonEmptyString",
+        "Optional absolute new-file path in an existing directory; omit for a private temporary directory. File mode 0600; maximum 32 MiB.",
+      ),
+      scope: option("string", "Capture scope, default only_within_viewport.", [
+        "full_page",
+        "only_within_viewport",
+        "subtree",
+      ]),
+      root: option(
+        "nonEmptyString",
+        "Page snapshot ref such as @21, required for subtree only.",
+      ),
+      includeActionMarks: option("boolean", "Include action marks."),
+      includeStableLocator: option("boolean", "Include stable locators."),
     },
   },
   {

@@ -1,3 +1,8 @@
+import {
+  writeSnapshotFile,
+  validateSnapshotPath,
+  type SnapshotFile,
+} from "./snapshot-file.js";
 import { diffSnapshot, type SnapshotBaseline } from "./snapshot-diff.js";
 import { limitSnapshotBody } from "./snapshot-budget.js";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -186,6 +191,11 @@ type PageSnapshotOptions = Omit<SnapshotOptions, "root"> & {
   maxChars?: number;
   diff?: boolean;
 };
+
+type PageSaveSnapshotOptions = Omit<
+  PageSnapshotOptions,
+  "maxChars" | "diff"
+> & { path?: string };
 
 type PageScreenshotOptions = Omit<CaptureScreenshotOptions, "full"> & {
   path?: string;
@@ -1672,6 +1682,38 @@ class Page {
   }
 
   async snapshot(options: PageSnapshotOptions = {}): Promise<string> {
+    return this.#captureSnapshot(options, async (text) => text);
+  }
+
+  async saveSnapshot(
+    options: PageSaveSnapshotOptions = {},
+  ): Promise<SnapshotFile> {
+    validatePublicApiOptions("Page.saveSnapshot", options);
+    const { path, ...snapshotOptions } = options;
+    if (path !== undefined) validateSnapshotPath(path);
+    return this.#captureSnapshot(snapshotOptions, async (text, page) => {
+      const tab = (await this.#services.listTabs()).find(
+        (entry) => entry.targetId === page.targetId,
+      );
+      if (!tab) throw new Error("Page closed before saving snapshot");
+      return writeSnapshotFile(
+        text,
+        {
+          url: tab.url,
+          page: this.label,
+          spaceId: page.spaceId,
+          scope: options.scope ?? "only_within_viewport",
+          ...(options.root ? { root: options.root } : {}),
+        },
+        path,
+      );
+    });
+  }
+
+  async #captureSnapshot<T>(
+    options: PageSnapshotOptions,
+    consume: (text: string, page: PageTarget) => Promise<T>,
+  ): Promise<T> {
     validatePublicApiOptions("Page.snapshot", options);
     const rootRefId =
       options.scope === "subtree" && options.root !== undefined
@@ -1806,7 +1848,10 @@ class Page {
           this.label,
         );
       }
-      return `${header}\n${limitSnapshotBody(body, options.maxChars)}`;
+      return consume(
+        `${header}\n${limitSnapshotBody(body, options.maxChars)}`,
+        page,
+      );
     });
   }
 

@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import { setOverrides, state } from "./state.js";
 import { buildEgoError, invokeEgo, probeAgentControl } from "./ego-errors.js";
 import { help as helpRuntime, formatHelp } from "./help-runtime.js";
+import { searchSnapshot } from "./snapshot-file.js";
 import { readGuide } from "./guide-runtime.js";
 import { validatePublicApiOptions } from "./public-api-schema.js";
 import { createStaleEgoBrowserGuard } from "./skill-migration.js";
@@ -32,6 +33,7 @@ import {
 } from "./learning/index.js";
 
 export { NAME } from "./state.js";
+export { searchSnapshot } from "./snapshot-file.js";
 export { guide } from "./guide-runtime.js";
 export { cdp, js } from "./cdp-eval.js";
 export {
@@ -718,6 +720,7 @@ export function helperContext(
     runSiteBrowserTool,
     learnContext,
     profiles,
+    searchSnapshot,
     listTaskSpaces,
     switchTaskSpace,
     newTaskSpace,

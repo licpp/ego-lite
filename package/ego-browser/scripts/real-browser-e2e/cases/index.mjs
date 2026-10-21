@@ -1,6 +1,8 @@
 import { environmentCase } from "./environment.mjs";
 import {
   tokenEfficientCase,
+  localSnapshotPrepareCase,
+  localSnapshotResumeCase,
   snapshotDiffPrepareCase,
   snapshotDiffResumeCase,
 } from "./token-efficient.mjs";
@@ -219,4 +221,6 @@ export const e2eCases = [
     body: snapshotDiffPrepareCase,
   },
   { name: "snapshot diff across rounds: resume", body: snapshotDiffResumeCase },
+  { name: "local snapshot search: prepare", body: localSnapshotPrepareCase },
+  { name: "local snapshot search: resume", body: localSnapshotResumeCase },
 ];
