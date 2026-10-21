@@ -39,3 +39,60 @@ export function tokenEfficientCase() {
     } finally { await page.close(); }
   `;
 }
+
+export function snapshotDiffPrepareCase() {
+  return String.raw`
+    const task = await taskSpace(taskName);
+    const page = await newPageAt(task, baseUrl + '/nav-target');
+    await page.evaluate(() => {
+      document.body.innerHTML = '<button id="change">Change</button><output id="result">Before</output><main id="stable"></main>';
+      document.querySelector('#change').onclick = () => document.querySelector('#result').textContent = 'After';
+      for (let i = 0; i < 100; i++) {
+        const p = document.createElement('p');
+        p.textContent = 'Stable unchanged row ' + i;
+        document.querySelector('#stable').append(p);
+      }
+    });
+    const full = await page.snapshot({ scope: 'full_page', diff: true });
+    assertIncludes(full, 'full: new diff baseline', 'first diff is full');
+    assertIncludes(full, 'Stable unchanged row 99', 'full-page snapshot observes offscreen rows');
+    await writeFile(join(tempDir, 'snapshot-diff.json'), JSON.stringify({ label: page.label, fullLength: full.length }));
+  `;
+}
+
+export function snapshotDiffResumeCase() {
+  return String.raw`
+    const saved = JSON.parse(await readFile(join(tempDir, 'snapshot-diff.json'), 'utf8'));
+    const task = await taskSpace(taskName);
+    const page = task.page(saved.label);
+    try {
+      assertIncludes(await page.snapshot({ scope: 'full_page', diff: true }), 'no changes', 'diff baseline survives a new CLI process');
+      await page.click('#change');
+      const clipped = await page.snapshot({ scope: 'full_page', diff: true, maxChars: 10 });
+      assertIncludes(clipped, 'truncated:', 'tiny budget reports truncation');
+      const delta = await page.snapshot({ scope: 'full_page', diff: true });
+      assertIncludes(delta, 'After', 'unreported change is retained after truncation');
+      assert(!delta.includes('Stable unchanged row'), 'delta omits unchanged rows');
+      assert(delta.length < saved.fullLength / 2, 'delta materially reduces returned text');
+      assertIncludes(await page.snapshot({ scope: 'full_page', diff: true }), 'no changes', 'complete delta advances baseline');
+      await page.evaluate(() => {
+        const replacement = document.createElement('button');
+        replacement.textContent = 'Replacement action';
+        replacement.onclick = () => document.querySelector('#result').textContent = 'Replacement clicked';
+        document.querySelector('#change').replaceWith(replacement);
+      });
+      const replacementDelta = await page.snapshot({ scope: 'full_page', diff: true });
+      assertIncludes(replacementDelta, 'Replacement action', 'replacement node is visible in delta');
+      const refLine = replacementDelta.split('\n').find((line) => /^\s*button.*\[ref=/.test(line));
+      const ref = refLine && refLine.match(/\[ref=(\d+)/);
+      assert(ref, 'replacement delta publishes a current button ref');
+      await page.click('@' + ref[1]);
+      assertEqual(await page.evaluate(() => document.querySelector('#result').textContent), 'Replacement clicked', 'delta ref acts on the replacement node');
+      const viewport = await page.snapshot({ diff: true });
+      assertIncludes(viewport, 'full: new diff baseline', 'scope change starts a full baseline');
+      assert(!viewport.includes('Stable unchanged row 99'), 'default viewport omits offscreen rows');
+      await page.goto(baseUrl + '/nav-target?new-document');
+      assertIncludes(await page.snapshot({ diff: true }), 'full: new diff baseline', 'navigation starts a full baseline');
+    } finally { await page.close(); }
+  `;
+}

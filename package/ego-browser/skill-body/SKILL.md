@@ -1,5 +1,5 @@
 ---
-version: "2.1.0-token-efficient.1"
+version: "2.1.0-token-efficient.2"
 date: "2026-10-21"
 ---
 
@@ -65,6 +65,13 @@ Before clearing any cookies/cache/storage read `references/clearing-state.md`.
   omissions explicitly; the Page provenance header is retained. It is opt-in for
   compatibility. Omissions are not evidence of absence. Narrow scope or extract
   the required DOM fields before increasing the budget.
+- `page.snapshot({ diff: true, maxChars: 6000 })` returns changed lines with
+  ancestor context across rounds. First use, navigation or scope/options changes
+  return full output; reordered content also returns full output. No changes is
+  relative to this observed scope, not proof that the entire page is unchanged.
+  Scrolling can make lines no longer observed without deleting DOM nodes.
+  Truncation does not advance the baseline; narrow scope or increase the budget.
+  Omit `diff` or use `false` to clear it and request a complete observation.
 - For lists, use `page.evaluate()` to return selected fields and a bounded slice,
   e.g. matching job titles/locations plus total count; do not print a hundred
   full descriptions. Do not pair a snapshot and screenshot by default.

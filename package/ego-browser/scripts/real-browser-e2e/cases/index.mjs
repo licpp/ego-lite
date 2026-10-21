@@ -1,5 +1,9 @@
 import { environmentCase } from "./environment.mjs";
-import { tokenEfficientCase } from "./token-efficient.mjs";
+import {
+  tokenEfficientCase,
+  snapshotDiffPrepareCase,
+  snapshotDiffResumeCase,
+} from "./token-efficient.mjs";
 import { helperSurfaceCase } from "./helper-surface.mjs";
 import { crossSpaceV2Case, taskSpaceCase } from "./task-space.mjs";
 import { profileSelectionCase } from "./profile-selection.mjs";
@@ -210,4 +214,9 @@ export const e2eCases = [
     name: "token-efficient guide, snapshots and shared forms",
     body: tokenEfficientCase,
   },
+  {
+    name: "snapshot diff across rounds: prepare",
+    body: snapshotDiffPrepareCase,
+  },
+  { name: "snapshot diff across rounds: resume", body: snapshotDiffResumeCase },
 ];

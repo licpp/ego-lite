@@ -1,3 +1,4 @@
+import { diffSnapshot, type SnapshotBaseline } from "./snapshot-diff.js";
 import { limitSnapshotBody } from "./snapshot-budget.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute } from "node:path";
@@ -183,6 +184,7 @@ type PageReloadOptions = Pick<PageGotoOptions, "timeout" | "waitUntil">;
 type PageSnapshotOptions = Omit<SnapshotOptions, "root"> & {
   root?: string;
   maxChars?: number;
+  diff?: boolean;
 };
 
 type PageScreenshotOptions = Omit<CaptureScreenshotOptions, "full"> & {
@@ -308,6 +310,11 @@ type LedgerPort = {
     spaceId: number,
     label: string,
     refs: PageRefState,
+  ): Promise<void>;
+  setSnapshotBaseline(
+    spaceId: number,
+    label: string,
+    baseline?: SnapshotBaseline,
   ): Promise<void>;
   closePage(spaceId: number, label: string): Promise<ManagedPage>;
   releasePage(spaceId: number, label: string): Promise<ManagedPage>;
@@ -1716,7 +1723,12 @@ class Page {
             : {}),
         };
       }
-      const { root: _root, maxChars: _maxChars, ...snapshotOptions } = options;
+      const {
+        root: _root,
+        maxChars: _maxChars,
+        diff: _diff,
+        ...snapshotOptions
+      } = options;
       const snapshotScope = options.scope ?? "only_within_viewport";
       const beforeDocuments = await this.#pageDocuments(page, sessionId);
       const result = await this.#services.snapshot({
@@ -1763,7 +1775,38 @@ class Page {
       );
       const content = result?.content || "";
       const header = await this.#snapshotHeader(page);
-      return `${header}\n${limitSnapshotBody(content, options.maxChars)}`;
+      let body = content;
+      if (options.diff) {
+        const entry = await this.#services.ledger.getPage(
+          page.spaceId,
+          this.label,
+        );
+        const key = JSON.stringify({
+          scope: snapshotScope,
+          root: options.root,
+          actions: options.includeActionMarks ?? true,
+          locators: options.includeStableLocator ?? true,
+          documents: [...documents].sort(([a], [b]) => a.localeCompare(b)),
+          url: (await this.#services.listTabs()).find(
+            (tab) => tab.targetId === page.targetId,
+          )?.url,
+        });
+        const delta = diffSnapshot(content, key, entry.snapshotBaseline);
+        body = delta.body;
+        if (options.maxChars === undefined || body.length <= options.maxChars) {
+          await this.#services.ledger.setSnapshotBaseline(
+            page.spaceId,
+            this.label,
+            delta.baseline,
+          );
+        }
+      } else {
+        await this.#services.ledger.setSnapshotBaseline(
+          page.spaceId,
+          this.label,
+        );
+      }
+      return `${header}\n${limitSnapshotBody(body, options.maxChars)}`;
     });
   }
 

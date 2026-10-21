@@ -15,12 +15,18 @@ import {
   type PageRefState,
 } from "./page-ref-registry.js";
 
+import {
+  validateSnapshotBaseline,
+  type SnapshotBaseline,
+} from "./snapshot-diff.js";
+
 export type PageOrigin = "agent" | "unknown";
 
 export type PageLedgerEntry = {
   targetId: string;
   openedBy: PageOrigin;
   refs?: PageRefState;
+  snapshotBaseline?: SnapshotBaseline;
 };
 
 export type ManagedPage = PageLedgerEntry & {
@@ -183,6 +189,20 @@ export class PageLedgerStore {
       const page = ledger.pages[label];
       if (!page) throw new Error(`page label not found: ${label}`);
       page.refs = validatePageRefState(refs);
+    });
+  }
+
+  async setSnapshotBaseline(
+    spaceId: number,
+    label: string,
+    baseline?: SnapshotBaseline,
+  ): Promise<void> {
+    assertLabel(label);
+    await this.#update(spaceId, (ledger) => {
+      const page = ledger.pages[label];
+      if (!page) throw new Error(`page label not found: ${label}`);
+      if (baseline) page.snapshotBaseline = validateSnapshotBaseline(baseline);
+      else delete page.snapshotBaseline;
     });
   }
 
@@ -590,6 +610,11 @@ function validateLedger(
     pages[label] = {
       targetId: page.targetId,
       openedBy: normalizePageOrigin(page.openedBy),
+      ...(page.snapshotBaseline === undefined
+        ? {}
+        : {
+            snapshotBaseline: validateSnapshotBaseline(page.snapshotBaseline),
+          }),
       ...(page.refs === undefined
         ? {}
         : { refs: validatePageRefState(page.refs) }),

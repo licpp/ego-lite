@@ -74,7 +74,14 @@ test("schema-driven option validation rejects unknown and invalid fields", () =>
     scope: "subtree",
     root: "@21",
     maxChars: 6000,
+    diff: true,
   });
+  for (const diff of [1, "true", null]) {
+    assert.throws(
+      () => validatePublicApiOptions("Page.snapshot", { diff }),
+      /boolean/,
+    );
+  }
   for (const maxChars of [0, -1, 1.5, "6000", NaN]) {
     assert.throws(
       () => validatePublicApiOptions("Page.snapshot", { maxChars }),

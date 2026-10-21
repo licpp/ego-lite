@@ -53,6 +53,13 @@ state. Avoid fixed delays when an observable condition exists. A snapshot
 captures the current moment; it does not wait for the page to become stable.
 `page.snapshot()` captures the current viewport. For content outside it, use
 `page.snapshot({ scope: "full_page" })`.
+Use `{ maxChars: 6000 }` to bound returned body text at complete lines (header and
+omission notice are additional). `{ diff: true }` emits changes and ancestor
+context since the last complete diff observation, across CLI rounds. First use,
+navigation, scope/rendering-option changes and reordered content return full
+output. Truncation never advances the baseline. Omit `diff` to clear the baseline.
+Lines no longer observed may simply have scrolled out of view. Both options affect
+returned text; native capture and ref validation still run.
 
 The default viewport snapshot includes visible iframe content returned by the
 browser. To focus on a frame's subtree, reuse the ref printed on its `iframe`

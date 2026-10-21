@@ -240,7 +240,7 @@ export const PUBLIC_API_SCHEMA: readonly PublicApiEntry[] = [
   {
     name: "Page.snapshot",
     signature:
-      "await page.snapshot({ scope?, root?, includeActionMarks?, includeStableLocator?, maxChars? })",
+      "await page.snapshot({ scope?, root?, includeActionMarks?, includeStableLocator?, maxChars?, diff? })",
     summary:
       "Return a semantic snapshot of the current viewport, full Page, or one snapshot-ref subtree with Page provenance.",
     options: {
@@ -255,6 +255,10 @@ export const PUBLIC_API_SCHEMA: readonly PublicApiEntry[] = [
       ),
       includeActionMarks: option("boolean", "Include action marks."),
       includeStableLocator: option("boolean", "Include stable locators."),
+      diff: option(
+        "boolean",
+        "Return changed lines and ancestor context since the last complete diff snapshot of this Page, across rounds. First use, navigation, scope/options changes or reordered content return full output. Truncation does not advance the baseline. Omit/false clears it. This limits returned text, not native capture.",
+      ),
       maxChars: option(
         "positiveInteger",
         "Optional returned body character budget (for example 6000). Preserves complete lines and the Page header; marks omissions explicitly. Omit for the complete snapshot. Does not limit native snapshot capture or invalidate omitted refs.",

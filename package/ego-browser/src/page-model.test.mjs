@@ -2132,8 +2132,8 @@ test("snapshot defaults to the viewport, reports its source, and validates optio
     );
 
     await assert.rejects(
-      () => page.snapshot({ diff: true }),
-      /page\.snapshot received unknown option: diff/,
+      () => page.snapshot({ unsupported: true }),
+      /page\.snapshot received unknown option: unsupported/,
     );
   });
 });
@@ -6383,5 +6383,47 @@ test("newPage never closes a managed page when native returns its target again",
       ).length,
       closeCallsBefore,
     );
+  });
+});
+
+test("diff snapshots persist across rounds, reset on scope/navigation, and never acknowledge truncated output", async () => {
+  await withFixture(async (fixture) => {
+    let content = "root\n  text stable\n  text old";
+    const overrides = {
+      async snapshot(options) {
+        assert.equal("diff" in options, false);
+        assert.equal("maxChars" in options, false);
+        return { content, refs: [] };
+      },
+    };
+    const task = taskForRound(fixture, "round-a", overrides);
+    const page = await openTestPage(task, "https://example.test/diff");
+    assert.match(
+      await page.snapshot({ diff: true }),
+      /full: new diff baseline/,
+    );
+    const roundB = taskForRound(fixture, "round-b", overrides);
+    const restored = await roundB.page(page.label);
+    assert.match(await restored.snapshot({ diff: true }), /no changes/);
+    content = "root\n  text stable\n  text new";
+    assert.match(
+      await restored.snapshot({ diff: true, maxChars: 10 }),
+      /truncated:/,
+    );
+    const delta = await restored.snapshot({ diff: true });
+    assert.match(delta, /text new/);
+    assert.doesNotMatch(delta, /text stable/);
+    assert.match(await restored.snapshot({ diff: true }), /no changes/);
+    assert.match(
+      await restored.snapshot({ diff: true, scope: "full_page" }),
+      /full: new/,
+    );
+    await restored.goto("https://example.test/other");
+    assert.match(
+      await restored.snapshot({ diff: true, scope: "full_page" }),
+      /full: new/,
+    );
+    await restored.snapshot();
+    assert.match(await restored.snapshot({ diff: true }), /full: new/);
   });
 });

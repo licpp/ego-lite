@@ -515,3 +515,30 @@ test("an explicitly unmanaged anchor is not adopted during reconciliation", asyn
     assert.equal(reconciled.unmanagedTargets["target-anchor"], "unknown");
   });
 });
+
+test("snapshot baselines survive processes, validate, and are discarded with their Page", async () => {
+  await withTempLedger(async (rootDir) => {
+    const first = new PageLedgerStore({ rootDir });
+    await first.addPage(7, "page-a");
+    const baseline = { key: "a".repeat(32), lines: ["b".repeat(32)] };
+    await first.setSnapshotBaseline(7, "p1", baseline);
+    const second = new PageLedgerStore({ rootDir });
+    assert.deepEqual(
+      (await second.getPage(7, "p1")).snapshotBaseline,
+      baseline,
+    );
+    await assert.rejects(
+      () => second.setSnapshotBaseline(7, "p1", { key: "invalid", lines: [] }),
+      /invalid snapshot baseline/,
+    );
+    assert.deepEqual(
+      (await second.getPage(7, "p1")).snapshotBaseline,
+      baseline,
+    );
+    await second.setSnapshotBaseline(7, "p1");
+    assert.equal((await second.getPage(7, "p1")).snapshotBaseline, undefined);
+    await second.setSnapshotBaseline(7, "p1", baseline);
+    await second.closePage(7, "p1");
+    assert.deepEqual((await first.read(7)).pages, {});
+  });
+});
