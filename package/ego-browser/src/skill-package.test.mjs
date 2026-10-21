@@ -16,7 +16,10 @@ test("the bundled usage guide is the source guide between version and end marker
   const version = /^version: "([^"]+)"$/m.exec(source)[1];
   const lines = bundled.trimEnd().split("\n");
 
-  assert.deepEqual(await readdir(join(outDir, "ego-browser")), ["SKILL.md"]);
+  assert.deepEqual((await readdir(join(outDir, "ego-browser"))).sort(), [
+    "SKILL.md",
+    "references",
+  ]);
   assert.equal(
     lines[0],
     `[ego-browser:skill] ego-browser usage guide v${version}`,
@@ -26,6 +29,22 @@ test("the bundled usage guide is the source guide between version and end marker
     bundled.includes(source.replace(/^---\n[\s\S]*?\n---\n/, "").trim()),
   );
   assert.ok(bundled.length <= 25_000);
+  assert.ok(
+    bundled.length < 6500,
+    "keep the default guide small; load conditional references on demand",
+  );
+  for (const topic of ["scripts", "spaces", "pages", "files"]) {
+    assert.equal(
+      await readFile(
+        join(outDir, `ego-browser/references/${topic}.md`),
+        "utf8",
+      ),
+      await readFile(
+        join(repoRoot, `package/ego-browser/skill-body/references/${topic}.md`),
+        "utf8",
+      ),
+    );
+  }
 });
 
 test("the bundled entry Skill matches the published entry Skill", async () => {

@@ -7,7 +7,8 @@ provided separately by the installed ego lite app.
 ![ego lite architecture: AI agents, the Skill, the Node.js runtime, and isolated task spaces](docs/assets/ego-lite-architecture.png)
 
 For the product overview, see [README.md](README.md). For the agent-facing API,
-read the [usage guide](package/ego-browser/skill-body/SKILL.md) and `help()`.
+read the [compact usage guide](package/ego-browser/skill-body/SKILL.md), its on-demand
+references via `guide("topic")`, and `help()`.
 Repository conventions live
 in [AGENTS.md](AGENTS.md).
 
@@ -49,6 +50,9 @@ single-file release entry point.
 Edit source files under `src/`, `scripts/`, `skill-body/`, or `skills/ego-browser/`, then rebuild.
 Build output is generated and must not be committed. The build replaces `dist/`
 and uses `.build.lock` to prevent concurrent builds.
+
+For a reversible macOS overlay installation, see
+[token-efficient installation](docs/token-efficient-install.md).
 
 ## Run the SDK in ego lite
 

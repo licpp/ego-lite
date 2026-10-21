@@ -10,6 +10,13 @@ The ego-browser Skill has two layers:
   with the SDK and printed by `ego-browser skill`, so the agent always reads the
   guide that matches the installed browser.
 
+Read the compact guide once per conversation/SDK version, then request only the
+needed topic through `await guide("scripts" | "spaces" | "pages" | "files")` in
+`ego-browser nodejs`. This is an SDK helper, **not** a new native `skill` CLI
+argument. It reads references adjacent to the selected SDK and uses the usual
+buffered output, including hard-stop suppression. All reference files must ship
+with the payload. `help("guide")` describes the entry point.
+
 This document lists what the ego lite app and its native `ego-browser` launcher
 must implement. Everything else lives in this repository.
 
@@ -22,7 +29,8 @@ must implement. Everything else lives in this repository.
 dist/out/
 ├── index.js                     SDK bundle
 ├── ego-browser/
-│   └── SKILL.md                 usage guide printed by `ego-browser skill`
+│   ├── SKILL.md                 compact guide printed by `ego-browser skill`
+│   └── references/              detailed topics read with await guide("topic")
 └── agent-skills/
     └── ego-browser/             entry Skill to install into ~/.agents/skills/ego-browser
         ├── SKILL.md

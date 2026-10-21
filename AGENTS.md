@@ -4,7 +4,7 @@
 
 `ego-browser` is a Node.js CDP browser-automation harness for AI agents. It drives the ego lite browser through `globalThis.ego` bindings (provided by the closed-source ego lite app), exposes a compact snapshot/ref workflow, and layers reusable site-specific knowledge ("learnings") on top of the browser runtime.
 
-This repo contains the open-source harness and the agent skill package — **not** the browser itself. The ego lite app bundles its own `ego-browser` binary that embeds this runtime. The Skill has two layers: `skills/ego-browser/` is a thin entry Skill that tells agents to run `ego-browser skill`, and `package/ego-browser/skill-body/SKILL.md` is the versioned usage guide that command prints (`ego-browser nodejs <<'EOF' ... EOF`). The repo CLI built here takes the heredoc directly on stdin with no subcommand.
+This repo contains the open-source harness and the agent skill package — **not** the browser itself. The ego lite app bundles its own `ego-browser` binary that embeds this runtime. The Skill has two layers: `skills/ego-browser/` is a thin entry Skill that tells agents to run `ego-browser skill`, and `package/ego-browser/skill-body/SKILL.md` is the compact versioned usage guide that command prints; detailed topics in `skill-body/references/` are printed on demand by the SDK `guide(topic)` helper (`ego-browser nodejs <<'EOF' ... EOF`). The repo CLI built here takes the heredoc directly on stdin with no subcommand.
 
 ## Architecture & Data Flow
 

@@ -57,6 +57,12 @@ const label = option(
  */
 export const PUBLIC_API_SCHEMA: readonly PublicApiEntry[] = [
   {
+    name: "guide",
+    signature: "await guide(topic?)",
+    summary:
+      "Print one SDK-matched usage reference: scripts, spaces, pages, or files. Omit topic to list choices. Prints itself; do not console.log the return value.",
+  },
+  {
     name: "profiles",
     signature: "await profiles()",
     summary: "List browser profiles available for new task spaces.",
@@ -234,7 +240,7 @@ export const PUBLIC_API_SCHEMA: readonly PublicApiEntry[] = [
   {
     name: "Page.snapshot",
     signature:
-      "await page.snapshot({ scope?, root?, includeActionMarks?, includeStableLocator? })",
+      "await page.snapshot({ scope?, root?, includeActionMarks?, includeStableLocator?, maxChars? })",
     summary:
       "Return a semantic snapshot of the current viewport, full Page, or one snapshot-ref subtree with Page provenance.",
     options: {
@@ -249,6 +255,10 @@ export const PUBLIC_API_SCHEMA: readonly PublicApiEntry[] = [
       ),
       includeActionMarks: option("boolean", "Include action marks."),
       includeStableLocator: option("boolean", "Include stable locators."),
+      maxChars: option(
+        "positiveInteger",
+        "Optional returned body character budget (for example 6000). Preserves complete lines and the Page header; marks omissions explicitly. Omit for the complete snapshot. Does not limit native snapshot capture or invalidate omitted refs.",
+      ),
     },
   },
   {

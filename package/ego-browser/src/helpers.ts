@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import { setOverrides, state } from "./state.js";
 import { buildEgoError, invokeEgo, probeAgentControl } from "./ego-errors.js";
 import { help as helpRuntime, formatHelp } from "./help-runtime.js";
+import { readGuide } from "./guide-runtime.js";
 import { validatePublicApiOptions } from "./public-api-schema.js";
 import { createStaleEgoBrowserGuard } from "./skill-migration.js";
 import { bufferOutput } from "./output-sink.js";
@@ -31,6 +32,7 @@ import {
 } from "./learning/index.js";
 
 export { NAME } from "./state.js";
+export { guide } from "./guide-runtime.js";
 export { cdp, js } from "./cdp-eval.js";
 export {
   click,
@@ -136,7 +138,7 @@ export async function profiles() {
  *   completeTaskSpace { keep: false }   -> claims it, then closes it
  *   takeOverTaskSpace / waitForAgentControl -> no ownership check (operates as-is)
  *
- * Keep this table in sync with the one in skill-body/SKILL.md.
+ * Keep this table in sync with skill-body/references/spaces.md.
  */
 
 /**
@@ -733,6 +735,11 @@ export function helperContext(
     // The formal 1.3 Skill starts through egoBrowser.*. Keep a narrow guard so
     // stale conversations get a recovery instruction instead of a ReferenceError.
     egoBrowser: createStaleEgoBrowserGuard(),
+    guide: async (topic?: string) => {
+      const text = await readGuide(topic);
+      printHelp(text);
+      return text;
+    },
     // help() prints its text so `ego-browser nodejs -e 'help()'` shows it, and
     // still returns the text for scripts that already log or inspect it.
     help: (...names: string[]) => {

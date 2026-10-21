@@ -1,3 +1,4 @@
+import { limitSnapshotBody } from "./snapshot-budget.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute } from "node:path";
 
@@ -181,6 +182,7 @@ type PageReloadOptions = Pick<PageGotoOptions, "timeout" | "waitUntil">;
 
 type PageSnapshotOptions = Omit<SnapshotOptions, "root"> & {
   root?: string;
+  maxChars?: number;
 };
 
 type PageScreenshotOptions = Omit<CaptureScreenshotOptions, "full"> & {
@@ -1714,7 +1716,7 @@ class Page {
             : {}),
         };
       }
-      const { root: _root, ...snapshotOptions } = options;
+      const { root: _root, maxChars: _maxChars, ...snapshotOptions } = options;
       const snapshotScope = options.scope ?? "only_within_viewport";
       const beforeDocuments = await this.#pageDocuments(page, sessionId);
       const result = await this.#services.snapshot({
@@ -1761,7 +1763,7 @@ class Page {
       );
       const content = result?.content || "";
       const header = await this.#snapshotHeader(page);
-      return `${header}\n${content}`;
+      return `${header}\n${limitSnapshotBody(content, options.maxChars)}`;
     });
   }
 

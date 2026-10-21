@@ -2138,6 +2138,28 @@ test("snapshot defaults to the viewport, reports its source, and validates optio
   });
 });
 
+test("budgeted snapshots keep provenance and actionable refs without passing SDK options to native", async () => {
+  await withFixture(async (fixture) => {
+    const task = taskForRound(fixture, "round-a", {
+      async snapshot(options) {
+        assert.equal("maxChars" in options, false);
+        return {
+          content:
+            'root\n  button "Save" [ref=21]\n' + "long row\n".repeat(1000),
+          refs: [{ refId: 21, backendNodeId: 21, role: "button" }],
+        };
+      },
+    });
+    const page = await openTestPage(task, "https://example.test/budget");
+    const text = await page.snapshot({ maxChars: 60 });
+    assert.match(text, /^\[p1 .*\]\nroot\n/);
+    assert.match(text, /\[ego-browser:snapshot\] truncated:/);
+    assert.ok(text.length < 500);
+    await page.click("@21");
+    assert.doesNotMatch(await page.snapshot(), /truncated:/);
+  });
+});
+
 test("viewport snapshots preserve native iframe contents and refs", async () => {
   for (const options of [{}, { scope: "only_within_viewport" }]) {
     await withFixture(async (fixture) => {

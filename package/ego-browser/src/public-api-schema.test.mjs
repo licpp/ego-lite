@@ -9,6 +9,7 @@ import {
 test("the public API schema contains the v2 entry points and object methods", () => {
   const names = new Set(PUBLIC_API_SCHEMA.map((entry) => entry.name));
   for (const name of [
+    "guide",
     "profiles",
     "listTaskSpaces",
     "taskSpace",
@@ -72,7 +73,14 @@ test("schema-driven option validation rejects unknown and invalid fields", () =>
   validatePublicApiOptions("Page.snapshot", {
     scope: "subtree",
     root: "@21",
+    maxChars: 6000,
   });
+  for (const maxChars of [0, -1, 1.5, "6000", NaN]) {
+    assert.throws(
+      () => validatePublicApiOptions("Page.snapshot", { maxChars }),
+      /positive integer/,
+    );
+  }
   validatePublicApiOptions("TaskSpace.finish", { keep: [] });
   validatePublicApiOptions("TaskSpace.finish", { keep: ["p2"] });
   validatePublicApiOptions("TaskSpace.finish", { keep: "all" });

@@ -39,7 +39,7 @@ const entrySkillEntries = [
   "learnings",
 ];
 // Claude Code keeps 30,000 characters of command output; leave headroom.
-const maxGuideLength = 25_000;
+const maxGuideLength = 6_500;
 const buildLock = join(root, ".build.lock");
 
 let lock;
@@ -99,6 +99,11 @@ try {
   await writeFile(
     join(bundledGuideDir, "SKILL.md"),
     renderGuide(await readFile(guideSource, "utf8")),
+  );
+  await cp(
+    join(root, "skill-body/references"),
+    join(bundledGuideDir, "references"),
+    { recursive: true },
   );
   for (const entry of entrySkillEntries) {
     await cp(

@@ -1,4 +1,5 @@
 import { environmentCase } from "./environment.mjs";
+import { tokenEfficientCase } from "./token-efficient.mjs";
 import { helperSurfaceCase } from "./helper-surface.mjs";
 import { crossSpaceV2Case, taskSpaceCase } from "./task-space.mjs";
 import { profileSelectionCase } from "./profile-selection.mjs";
@@ -205,4 +206,8 @@ export const e2eCases = [
   { name: "pure CDP workflow", body: pureCdpWorkflowCase },
   { name: "snapshot workflow", body: snapshotWorkflowCase },
   { name: "visual workflow", body: visualWorkflowCase },
+  {
+    name: "token-efficient guide, snapshots and shared forms",
+    body: tokenEfficientCase,
+  },
 ];

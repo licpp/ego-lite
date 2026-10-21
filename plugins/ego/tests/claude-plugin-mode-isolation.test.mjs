@@ -23,6 +23,19 @@ function readRequiredFile(path) {
   return readFileSync(url, "utf8");
 }
 
+// The compact entrypoint delegates conditional details to SDK-matched topics.
+// Keep testing the original lifecycle invariants across the shipped guide set.
+function readUsageGuide() {
+  return [
+    guidePath,
+    ...["scripts", "spaces", "pages", "files"].map(
+      (topic) => `package/ego-browser/skill-body/references/${topic}.md`,
+    ),
+  ]
+    .map(readRequiredFile)
+    .join("\n");
+}
+
 function assertMissing(path) {
   assert.equal(existsSync(repoFile(path)), false, `${path} must not exist`);
 }
@@ -153,7 +166,7 @@ test("portable Skill and support files use the same heredoc contract", () => {
 });
 
 test("versioned guide restores v2 Pages across script rounds", () => {
-  const skill = readRequiredFile(guidePath);
+  const skill = readUsageGuide();
 
   assert.match(
     skill,
@@ -178,5 +191,5 @@ test("source plugin links directly to the canonical Skill", () => {
 });
 
 test("versioned guide preserves TaskSpace safety policy", () => {
-  assertTaskSpaceSafety(readRequiredFile(guidePath), "versioned guide");
+  assertTaskSpaceSafety(readUsageGuide(), "versioned guide");
 });
