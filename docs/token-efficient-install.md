@@ -29,7 +29,7 @@ ego-browser nodejs -e 'await guide()'
 ego-browser nodejs -e 'await guide("scripts")'
 ```
 
-The guide should report `2.1.0-token-efficient.3`, and `guide()` should list four
+The guide should report `2.1.0-token-efficient.4`, and `guide()` should list four
 topics. If another agent keeps its own copy of the entry Skill, point that agent
 to this checkout's `skills/ego-browser/SKILL.md` (do not stack duplicate Skills).
 The core guide is read once per conversation/version, not once per round.
@@ -173,3 +173,28 @@ including after Page/task cleanup. Browser data and login state are unaffected.
 Saved data is not live: observe the current Page before acting on saved refs.
 Refresh the file after pagination/scroll-loading or when current content matters.
 For detailed options use `await guide("files")` or `help("searchSnapshot")`.
+
+## Reusable date filling
+
+The installed entry Skill ships `scripts/form-helpers.mjs` and `date-helpers.mjs`.
+Import `fillDate` once, then use sequential calls with stable CSS input selectors:
+
+```js
+const { fillDate } =
+  await import("file:///Users/your-name/.agents/skills/ego-browser/scripts/form-helpers.mjs");
+await fillDate(page, 'input[name="startDate"]', "2025-12-22");
+await fillDate(page, 'input[name="endDate"]', "2026-04-30");
+```
+
+The helper accepts year, month and day precision, validates real calendar dates,
+fills writable inputs directly, and selects read-only Element UI / Zhipin-style
+calendars using normal Page clicks. Distant years use decade pages. It checks the
+committed value and skips already-correct dates. It does not set DOM values,
+remove readonly/disabled, call hidden framework state, retry after a hard stop,
+or guess dates. Unsupported widgets need an adapter; selectors must identify one
+input in the top document. Existing open calendars must be closed first.
+
+`mode: "input" | "picker" | "auto"` (default auto), `format`, and `timeout` are
+optional. Calendar actions are sequential within one agent invocation; this saves
+model/tool round trips while retaining the widget's real click/wait requirements.
+Detailed format/precision rules are in `await guide("scripts")`.

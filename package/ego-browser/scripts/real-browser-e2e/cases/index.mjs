@@ -1,3 +1,4 @@
+import { reusableDateCase } from "./date-helpers.mjs";
 import { environmentCase } from "./environment.mjs";
 import {
   tokenEfficientCase,
@@ -223,4 +224,5 @@ export const e2eCases = [
   { name: "snapshot diff across rounds: resume", body: snapshotDiffResumeCase },
   { name: "local snapshot search: prepare", body: localSnapshotPrepareCase },
   { name: "local snapshot search: resume", body: localSnapshotResumeCase },
+  { name: "reusable date input and picker helpers", body: reusableDateCase },
 ];

@@ -108,6 +108,46 @@ URL for `fillFields(page, fields)` and `saveAndVerify(page, { save, verify, arg,
 timeout? })`. `verify` must start false and become true only after a new saved
 result appears. These helpers propagate errors, including user-control hard stops.
 
+### Reusable date entry
+
+`form-helpers.mjs` also exports `fillDate(page, cssSelector, value, options?)`.
+Use one CSS selector for an input in the top document (not a ref, XPath, frame or
+`>> nth=` selector). Inspect the form once to choose stable selectors, then reuse
+calls in later rounds:
+
+```js
+const { fillDate } =
+  await import("file:///absolute/entry-skill/scripts/form-helpers.mjs");
+await fillDate(page, 'input[name="startDate"]', "2025-12-22");
+await fillDate(page, 'input[name="endDate"]', "2026-04-30");
+// Also supports year/month fields, e.g. education and award months.
+await fillDate(page, "#graduationMonth", "2027-06");
+```
+
+Values are `YYYY`, `YYYY-MM` or `YYYY-MM-DD`; slashes are accepted too. Invalid
+dates (including non-leap February 29) fail before browser work. Default
+`mode: "auto"` fills writable text/native date/month inputs and presses Tab.
+It selects read-only Element UI or BOSS/Zhipin `ui-date-picker` controls through
+native clicks: year grid, decade navigation, month, then exact current-month day.
+Hidden duplicate tables and previous/next-month days are excluded. Close any open
+date picker first. Calls must be sequential because calendars share the Page.
+
+Options: `mode: "auto" | "input" | "picker"`, `timeout` (default 10000 ms per
+observable wait), and `format` (`YYYY/MM/DD`, `YYYY-MM-DD`, `YYYY/MM`, `YYYY-MM`,
+or `YYYY`, matching precision). Text input defaults to slashes unless its current
+value uses hyphens; native date/month inputs use their required ISO format.
+Force picker mode if an editable widget rejects typed values; inspect the result
+before retrying. The helper never removes readonly/disabled, sets DOM values,
+calls framework internals, or retries a submission. Unsupported picker structures,
+disabled dates, ambiguous controls and user-control stops propagate as errors.
+Year navigation stops after 24 calendar-page moves. Other widgets need an explicit
+adapter; this is not a universal calendar API.
+
+Success requires the committed input value to match. Returns
+`{ value, date: "YYYY-MM-DD", changed }` (date precision follows the input).
+Already matching values return `changed: false` without clicking. Print only the
+final results of a batch; no snapshot is needed between calendar clicks.
+
 Keep the task's files in one directory. On PowerShell 5.1 create UTF-8 files with
 your file tool, not `Set-Content`, `Out-File`, or `>` (which can write ANSI/UTF-16).
 

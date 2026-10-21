@@ -41,3 +41,5 @@ export async function saveAndVerify(
   await page.waitForFunction(verify, arg, { timeout });
   return { saved: true };
 }
+
+export { fillDate } from "./date-helpers.mjs";

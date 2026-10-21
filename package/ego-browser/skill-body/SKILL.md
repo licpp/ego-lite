@@ -1,5 +1,5 @@
 ---
-version: "2.1.0-token-efficient.3"
+version: "2.1.0-token-efficient.4"
 date: "2026-10-21"
 ---
 
