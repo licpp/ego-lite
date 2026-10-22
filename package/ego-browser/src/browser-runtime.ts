@@ -42,6 +42,7 @@ const pending = new Map();
 const browserEvents = [];
 const browserEventSubscribers = new Set<(event: any) => void>();
 const pageEventSubscribers = new Map<string, Set<(event: any) => void>>();
+const pageTreeEventSubscribers = new Map<string, Set<(event: any) => void>>();
 const targetStates = new Map();
 const sessionTargets = new Map();
 const childTargets = new Map<string, Set<string>>();
@@ -413,6 +414,7 @@ export function disposeBrowserRuntime(
   rejectAllPending(new Error("ego-browser runtime was disposed"));
   browserEventSubscribers.clear();
   pageEventSubscribers.clear();
+  pageTreeEventSubscribers.clear();
   invalidateSession();
 }
 
@@ -431,6 +433,7 @@ export function subscribeBrowserEvents(
 export function subscribePageEvents(
   targetId: string,
   listener: (event: any) => void,
+  options: { includeChildren?: boolean } = {},
 ): () => void {
   if (typeof targetId !== "string" || targetId.length === 0) {
     throw new TypeError("page event subscription requires a targetId");
@@ -438,15 +441,18 @@ export function subscribePageEvents(
   if (typeof listener !== "function") {
     throw new TypeError("page event listener must be a function");
   }
-  let listeners = pageEventSubscribers.get(targetId);
+  const subscribers = options.includeChildren
+    ? pageTreeEventSubscribers
+    : pageEventSubscribers;
+  let listeners = subscribers.get(targetId);
   if (!listeners) {
     listeners = new Set();
-    pageEventSubscribers.set(targetId, listeners);
+    subscribers.set(targetId, listeners);
   }
   listeners.add(listener);
   return () => {
     listeners?.delete(listener);
-    if (listeners?.size === 0) pageEventSubscribers.delete(targetId);
+    if (listeners?.size === 0) subscribers.delete(targetId);
   };
 }
 
@@ -1523,6 +1529,13 @@ function handleMessage(message) {
   if (targetId && typeof data.method === "string") {
     for (const listener of [...(pageEventSubscribers.get(targetId) || [])]) {
       guardNativeCallback("page event subscriber", () => listener(data));
+    }
+  }
+  if (targetId && typeof data.method === "string") {
+    for (const listener of [
+      ...(pageTreeEventSubscribers.get(pageRootTargetId(targetId)) || []),
+    ]) {
+      guardNativeCallback("page tree event subscriber", () => listener(data));
     }
   }
   const events = target ? target.events : browserEvents;

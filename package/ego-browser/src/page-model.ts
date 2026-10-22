@@ -1,4 +1,12 @@
 import {
+  prepareResponseObserver,
+  validateResponseMatch,
+  validateResponseOptions,
+  type ResponseMatch,
+  type ResponseOptions,
+  type ObservedResponse,
+} from "./response-observer.js";
+import {
   writeSnapshotFile,
   validateSnapshotPath,
   type SnapshotFile,
@@ -406,6 +414,7 @@ type PageModelServices = {
   subscribePageEvents(
     targetId: string,
     listener: (event: any) => void,
+    options?: { includeChildren?: boolean },
   ): () => void;
   prepareDownload(
     targetId: string,
@@ -2247,6 +2256,73 @@ class Page {
         await waitForLoadStateInPage(this.#services, sessionId, state, options);
       } finally {
         await this.#invalidateRefs(page);
+      }
+    });
+  }
+
+  /** Run one action once and observe its first matching completed response. HTTP success does not establish business success. */
+  async actAndWaitForResponse<T>(
+    options: ResponseOptions & {
+      action: () => T | Promise<T>;
+      match: ResponseMatch;
+    },
+  ): Promise<{ actionResult: T; response: ObservedResponse }> {
+    validatePublicApiOptions("Page.actAndWaitForResponse", options);
+    const { action, match, ...capture } = options;
+    if (typeof action !== "function")
+      throw new TypeError("action must be a function");
+    validateResponseMatch(match);
+    validateResponseOptions(capture, 1);
+    const result = await this.#actAndObserveResponses(action, [match], capture);
+    return { actionResult: result.actionResult, response: result.responses[0] };
+  }
+
+  /** Observe one completed request per matcher from one action; results keep matcher order. No request is replayed. */
+  async actAndWaitForResponses<T>(
+    options: ResponseOptions & {
+      action: () => T | Promise<T>;
+      matches: ResponseMatch[];
+    },
+  ): Promise<{ actionResult: T; responses: ObservedResponse[] }> {
+    validatePublicApiOptions("Page.actAndWaitForResponses", options);
+    const { action, matches, ...capture } = options;
+    if (typeof action !== "function")
+      throw new TypeError("action must be a function");
+    if (!Array.isArray(matches))
+      throw new TypeError("matches must be an array");
+    matches.forEach(validateResponseMatch);
+    validateResponseOptions(capture, matches.length);
+    return this.#actAndObserveResponses(action, matches, capture);
+  }
+
+  async #actAndObserveResponses<T>(
+    action: () => T | Promise<T>,
+    matches: ResponseMatch[],
+    options: ResponseOptions,
+  ): Promise<{ actionResult: T; responses: ObservedResponse[] }> {
+    const page = await this.#resolve();
+    return this.#services.gate.withPage(page, async ({ sessionId }) => {
+      const sessions = await this.#services.pageNetworkSessions(
+        sessionId,
+        options.timeout,
+      );
+      await this.#services.ensureNetworkTracking(sessions, options.timeout);
+      // Subscribe only after discovery, and enable matching immediately before input.
+      // Re-entrant Page actions retain the same native gate/space lease.
+      const observer = prepareResponseObserver(
+        this.#services,
+        page.targetId,
+        matches,
+        options,
+      );
+      try {
+        observer.start();
+        const actionResult = await action();
+        const responses = await observer.result;
+        return { actionResult, responses };
+      } catch (error) {
+        observer.cancel(error);
+        throw error;
       }
     });
   }

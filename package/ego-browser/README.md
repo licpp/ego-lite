@@ -118,3 +118,7 @@ existing scripts.
 ## License
 
 MIT
+
+## Action response observation
+
+`page.actAndWaitForResponse({ action, match, bodyFields, maxChars })` passively observes the actual response to one normal Page action. The plural API waits for multiple matching requests, such as upload and attachment association. HTTP status is separate from business success; there is no automatic replay. See [usage and installation](../../docs/response-observation.md) and the [optimization plan](../../docs/response-observation-plan.md).

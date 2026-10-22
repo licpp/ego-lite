@@ -23,6 +23,37 @@ export async function startFixtureServer(taskName) {
   const snapshotFrameRequests = new Map();
   const fixtureServer = createServer((req, res) => {
     const url = new URL(req.url || "/", "http://127.0.0.1");
+    if (
+      url.pathname === "/api/observe-save" ||
+      url.pathname === "/api/observe-upload"
+    ) {
+      let body = "";
+      req.on("data", (chunk) => {
+        body += chunk;
+      });
+      req.on("end", () => {
+        res.writeHead(200, {
+          "content-type": "application/json",
+          "cache-control": "no-store",
+        });
+        res.end(
+          JSON.stringify(
+            body === "invalid"
+              ? { code: 400, message: "invalid title" }
+              : {
+                  code: 0,
+                  data: {
+                    attachmentId: url.pathname.endsWith("upload")
+                      ? "fixture-attachment"
+                      : body,
+                  },
+                  extra: "not sent to context unless requested",
+                },
+          ),
+        );
+      });
+      return;
+    }
     if (url.pathname === "/healthz") {
       res.writeHead(200, {
         "content-type": "application/json",

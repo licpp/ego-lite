@@ -1,6 +1,6 @@
 ---
-version: "2.1.0-token-efficient.4"
-date: "2026-10-21"
+version: "2.1.0-token-efficient.5"
+date: "2026-10-22"
 ---
 
 # ego-browser
@@ -82,6 +82,7 @@ Before clearing any cookies/cache/storage read `references/clearing-state.md`.
   observation. Do not re-observe a result already established by the last call.
 - After navigation/DOM changes or a stale ref, take a small current snapshot.
   Prefer stable DOM selectors for reusable helpers; do not repeatedly retry refs.
+- Save/upload responses: `page.actAndWaitForResponse()`; see `guide("files")`.
 - Wait for the specific new result: a new saved record, changed file id, URL or
   success state. A disappeared spinner or dispatched click alone proves nothing.
   Use `page.waitForFunction(fn, arg, { timeout: 10000 })` for a business predicate.

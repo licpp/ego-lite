@@ -6488,3 +6488,68 @@ test("saveSnapshot respects the Page control boundary before writing any file", 
     await assert.rejects(() => readFile(path), { code: "ENOENT" });
   });
 });
+
+test("response action API arms before callback, uses native gate and never retries", async () => {
+  await withFixture(async (fixture) => {
+    const listeners = new Set();
+    let actionCount = 0;
+    const task = taskForRound(fixture, "response-round", {
+      subscribePageEvents(_target, fn, options) {
+        assert.equal(options.includeChildren, true);
+        listeners.add(fn);
+        return () => listeners.delete(fn);
+      },
+      async cdp(method, params, session, timeout) {
+        if (method === "Network.getResponseBody")
+          return { body: '{"code":400,"message":"invalid"}' };
+        return fixture.services.cdp(method, params, session, timeout);
+      },
+    });
+    const page = await openTestPage(task, "https://example.test/form");
+    const send = () => {
+      actionCount++;
+      assert.equal(listeners.size, 1, "observer already armed");
+      const emit = (method, params) => {
+        for (const fn of listeners)
+          fn({ method, params, sessionId: "session:test" });
+      };
+      emit("Network.requestWillBeSent", {
+        requestId: "save",
+        type: "XHR",
+        request: { method: "POST", url: "https://example.test/save" },
+      });
+      emit("Network.responseReceived", {
+        requestId: "save",
+        response: { status: 200, mimeType: "application/json" },
+      });
+      emit("Network.loadingFinished", { requestId: "save" });
+      return "action receipt";
+    };
+    const result = await page.actAndWaitForResponse({
+      action: send,
+      match: { urlIncludes: "/save" },
+    });
+    assert.equal(result.actionResult, "action receipt");
+    assert.equal(result.response.body.json.code, 400);
+    assert.equal(actionCount, 1);
+    assert.equal(listeners.size, 0);
+    await assert.rejects(
+      () =>
+        page.actAndWaitForResponse({
+          action: () => {
+            throw new Error("action failed");
+          },
+          match: { urlIncludes: "/save" },
+        }),
+      /action failed/,
+    );
+    assert.equal(listeners.size, 0);
+    for (const args of [
+      { match: { urlIncludes: "/save" } },
+      { action: send, match: {} },
+      { action: send, match: { urlIncludes: "/save" }, unexpected: true },
+    ])
+      await assert.rejects(() => page.actAndWaitForResponse(args), TypeError);
+    assert.equal(actionCount, 1, "invalid configuration never runs action");
+  });
+});

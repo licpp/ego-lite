@@ -23,6 +23,8 @@ test("the public API schema contains the v2 entry points and object methods", ()
     "TaskSpace.finish",
     "Page.snapshot",
     "Page.saveSnapshot",
+    "Page.actAndWaitForResponse",
+    "Page.actAndWaitForResponses",
     "searchSnapshot",
     "Page.reload",
     "Page.targetId",
@@ -68,6 +70,23 @@ test("schema-driven option validation rejects unknown and invalid fields", () =>
     label: "scroll project board",
   });
   validatePublicApiOptions("Page.fetch", { saveAs: "/tmp/image.png" });
+  validatePublicApiOptions("Page.actAndWaitForResponse", {
+    action: () => {},
+    match: { urlIncludes: "/save" },
+    bodyFields: ["code"],
+  });
+  for (const options of [
+    { action: "click" },
+    { match: [] },
+    { bodyFields: [1] },
+  ]) {
+    assert.throws(() =>
+      validatePublicApiOptions("Page.actAndWaitForResponse", options),
+    );
+  }
+  assert.throws(() =>
+    validatePublicApiOptions("Page.actAndWaitForResponses", { matches: {} }),
+  );
   validatePublicApiOptions("Page.screenshot", {
     path: "/tmp/image.png",
     scale: "css",

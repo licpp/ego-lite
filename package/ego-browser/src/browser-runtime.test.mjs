@@ -126,6 +126,41 @@ test("frame sessions follow one Page target and are invalidated with it", async 
       "frame sessions retain the ancestry needed to render an OOPIF cursor",
     );
     assert.equal(attachCounts.has("foreign-frame"), false);
+    const treeEvents = [],
+      mainEvents = [];
+    const stopTree = subscribePageEvents(
+      "page-main",
+      (event) => treeEvents.push(event),
+      { includeChildren: true },
+    );
+    const stopMain = subscribePageEvents("page-main", (event) =>
+      mainEvents.push(event),
+    );
+    for (const sessionId of [
+      "session:page-main",
+      "session:frame-child",
+      "session:frame-grandchild",
+    ]) {
+      runtime.onCDPMessage(
+        JSON.stringify({
+          sessionId,
+          method: "Network.responseReceived",
+          params: { requestId: sessionId },
+        }),
+      );
+    }
+    assert.equal(
+      treeEvents.length,
+      3,
+      "tree subscriptions include known descendant frames",
+    );
+    assert.equal(
+      mainEvents.length,
+      1,
+      "existing target-only subscriptions stay isolated",
+    );
+    stopTree();
+    stopMain();
 
     invalidateSession("page-main");
     const second = await ensureFrameSessions("page-main");

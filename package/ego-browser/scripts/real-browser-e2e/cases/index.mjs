@@ -1,3 +1,4 @@
+import { responseObserverCase } from "./response-observer.mjs";
 import { reusableDateCase } from "./date-helpers.mjs";
 import { environmentCase } from "./environment.mjs";
 import {
@@ -225,4 +226,5 @@ export const e2eCases = [
   { name: "local snapshot search: prepare", body: localSnapshotPrepareCase },
   { name: "local snapshot search: resume", body: localSnapshotResumeCase },
   { name: "reusable date input and picker helpers", body: reusableDateCase },
+  { name: "Page response observation", body: responseObserverCase },
 ];

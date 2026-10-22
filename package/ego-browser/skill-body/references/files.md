@@ -150,3 +150,66 @@ await page.fetch("/image.png", { saveAs: "/absolute/path/image.png" });
 
 Use standard Node.js `fetch()` for background requests that do not need Page
 browser semantics.
+
+## Observe the response to a normal Page action
+
+For a known save/upload endpoint, observe the actual request instead of repeatedly
+printing the page or replaying the request:
+
+```js
+const { response } = await page.actAndWaitForResponse({
+  action: () => page.click("#save"),
+  match: { urlIncludes: "/resume/save", method: "POST" },
+  bodyFields: ["code", "message", "data.id"],
+  maxChars: 2000,
+  timeout: 10000,
+});
+console.log(response);
+```
+
+Matching is armed before the callback runs, after Network setup. The callback is
+called exactly once. `actionResult` retains the ordinary action's return value.
+A matcher requires `urlIncludes` or `urlExact`, and optionally `method`,
+`resourceType` (CDP spelling, e.g. `XHR`/`Fetch`) and `postDataIncludes`.
+Conditions are ANDed; request payloads/headers are not returned. Use observed
+endpoints, not invented private APIs. Observation never sends or retries a request.
+
+`page.actAndWaitForResponses({ action, matches, ...options })` waits for one
+completed request per matcher (1–16) and returns `responses` in matcher order.
+A single request may satisfy overlapping matchers. This supports pages that
+upload and link an attachment automatically; if these are separate user actions,
+observe each action separately and compare the upload ID with the saved link.
+
+Only future requests in the action window are eligible. The main Page and its
+known child frame sessions are covered, not independent workers or new popups.
+Background requests to the same URL can still match; add method/known business
+identifiers. This is correlation evidence, not proof of causation.
+
+Read `state` (`finished`/`failed`), `httpStatus` and `httpOk` separately from
+business fields. **HTTP 200 is not saved:true.** Site-specific business semantics
+must be checked by the caller; upload success does not prove record association.
+A response from a cache/service worker is identified when CDP reports it.
+Redirects return final response metadata plus the observed chain.
+
+Bodies wait for `loadingFinished`; streaming or unconsumed responses may time out.
+Observation does not consume the page's stream. `body.kind` is `json`, `text`, `binary`,
+`omitted` or `unavailable`. JSON that fits returns `json`; truncated output returns
+only `text` plus `truncated:true`, and need not be valid JSON. Default body budget
+is 4000 characters per response, maximum 100000 (metadata overhead is additional).
+`bodyFields` selects up to 32 own-property dot paths before applying the budget;
+missing fields are omitted, not interpreted. Bodies above 2 million characters
+are returned as bounded text without JSON parsing. `includeBody:false` avoids
+reading bodies; binary bodies do not print base64. Evicted/unreadable bodies are
+`unavailable`, not success.
+
+For a single response, `saveBodyAs:'/absolute/new-response.json'` saves the full
+body in a new file (0600, parent directory must exist, no overwrite) while keeping
+returned text bounded. No file is created by default. Keep sensitive artifacts
+local. Do not combine saving/field selection with `includeBody:false`.
+
+`EGO_RESPONSE_TIMEOUT` includes ordered `partialResponses` with null for missing
+results. Timeout does not mean the action did not happen. Do not retry a write
+without checking the saved record. Timeout bounds observation, not arbitrary
+callback code; callbacks should await normal Page operations. Action/control
+errors propagate, subscriptions are cleaned up, and `page.events()` is not drained.
+If nothing matches, inspect a small current region for front-end validation errors.

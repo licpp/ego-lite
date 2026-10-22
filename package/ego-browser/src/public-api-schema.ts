@@ -1,4 +1,8 @@
 export type PublicApiOptionKind =
+  | "function"
+  | "object"
+  | "array"
+  | "stringArray"
   | "boolean"
   | "clip"
   | "finiteNumber"
@@ -443,6 +447,74 @@ export const PUBLIC_API_SCHEMA: readonly PublicApiEntry[] = [
     },
   },
   {
+    name: "Page.actAndWaitForResponse",
+    signature:
+      "await page.actAndWaitForResponse({ action, match, timeout?, maxChars?, includeBody?, bodyFields?, saveBodyAs? })",
+    summary:
+      "Arm passive Page/child-frame network observation before calling action once. Match future requests by urlIncludes/urlExact plus optional method/resourceType/postDataIncludes. Wait for loading completion and return compact response evidence, not business-success certification. No replay; no headers/request bodies are returned. Timeout can mean the write already took effect.",
+    options: {
+      action: option(
+        "function",
+        "A callback using normal Page actions; called exactly once after network observation is ready.",
+      ),
+      match: option(
+        "object",
+        "A response matcher requiring urlIncludes or urlExact.",
+      ),
+      timeout,
+      maxChars: option(
+        "positiveInteger",
+        "Returned body budget per response, default 4000, maximum 100000 characters; truncation is explicit.",
+      ),
+      includeBody: option(
+        "boolean",
+        "Read response bodies by default; false returns metadata only.",
+      ),
+      bodyFields: option(
+        "stringArray",
+        "Select up to 32 own-property JSON dot paths before bounding output. Never executes expressions.",
+      ),
+      saveBodyAs: option(
+        "nonEmptyString",
+        "Single response only: save the complete body to a new absolute file path; existing files are not overwritten.",
+      ),
+    },
+  },
+  {
+    name: "Page.actAndWaitForResponses",
+    signature:
+      "await page.actAndWaitForResponses({ action, matches, timeout?, maxChars?, includeBody?, bodyFields?, saveBodyAs? })",
+    summary:
+      "Arm passive Page/child-frame network observation before calling action once. Match future requests by urlIncludes/urlExact plus optional method/resourceType/postDataIncludes. Wait for loading completion and return compact response evidence, not business-success certification. No replay; no headers/request bodies are returned. Timeout can mean the write already took effect.",
+    options: {
+      action: option(
+        "function",
+        "A callback using normal Page actions; called exactly once after network observation is ready.",
+      ),
+      matches: option(
+        "array",
+        "An array of 1–16 response matchers; output follows matcher order.",
+      ),
+      timeout,
+      maxChars: option(
+        "positiveInteger",
+        "Returned body budget per response, default 4000, maximum 100000 characters; truncation is explicit.",
+      ),
+      includeBody: option(
+        "boolean",
+        "Read response bodies by default; false returns metadata only.",
+      ),
+      bodyFields: option(
+        "stringArray",
+        "Select up to 32 own-property JSON dot paths before bounding output. Never executes expressions.",
+      ),
+      saveBodyAs: option(
+        "nonEmptyString",
+        "Single response only: save the complete body to a new absolute file path; existing files are not overwritten.",
+      ),
+    },
+  },
+  {
     name: "Page.fetch",
     signature: "await page.fetch(url, options?)",
     summary:
@@ -778,6 +850,19 @@ function validateOptionValue(
 ): void {
   let valid = false;
   switch (specification.kind) {
+    case "function":
+      valid = typeof value === "function";
+      break;
+    case "object":
+      valid = isPlainObject(value);
+      break;
+    case "array":
+      valid = Array.isArray(value);
+      break;
+    case "stringArray":
+      valid =
+        Array.isArray(value) && value.every((item) => typeof item === "string");
+      break;
     case "boolean":
       valid = typeof value === "boolean";
       break;
